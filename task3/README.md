@@ -96,8 +96,8 @@ The testbench was provided for us but it uses the following functions to initial
 
 ```cpp
 // intialize variables for analogue output
-  vbdInitMicIn(RAM_SZ);
-  
-  // ask Vbuddy to return the next audio sample
-  top->mic_signal = vbdMicValue();
+vbdInitMicIn(RAM_SZ);
+
+// ask Vbuddy to return the next audio sample
+top->mic_signal = vbdMicValue();
 ```
