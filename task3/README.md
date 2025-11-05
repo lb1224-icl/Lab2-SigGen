@@ -1,85 +1,103 @@
-# Task 2
+# Task 3
 
 ## Overview
 
-In Task 2 we had to generate a dual-port rom and use this to display two sin waves with a phase between them controlled by `vbdValue()`
+In Task 2 we had to generate a dual-port ram and use this to display an audio signal and then the RAMs signal with a delay. The delay is done in the same way as with the dual-port rom. We now also need the ability to write to the RAM.
 
 ## Process
 
-### Creating dual-port ROM
+### Creating dual-port RAM
 
-In an identical manner to the single-port ROM, the dual-port ROM creates 2 rom arrays of address size `[2**ADDRESS_WIDTH-1:0]` each storing data of size `[DATA_WIDTH-1:0]`. The only difference is we require two outputs and 2 addresses.
+To read and write to the RAM, we need a lot more inputs and enabled signals to know when we are and aren't reading and/or writing.
 
-The full SV file is shown below:
+This is done like this:
 
 ```SV
-module rom2ports #(
-    parameter ADDRESS_WIDTH = 8, DATA_WIDTH = 8
-
+module ram2ports #(
+    parameter ADDRESS_WIDTH = 8,
+              DATA_WIDTH    = 8
 )(
-    input logic clk,
-    input logic [ADDRESS_WIDTH-1:0] addrA,
-    input logic [ADDRESS_WIDTH-1:0] addrB,
-    output logic [DATA_WIDTH-1:0] doutA,
-    output logic [DATA_WIDTH-1:0] doutB
+    input  logic                     clk,
+    input  logic                     wr_en,
+    input  logic                     rd_en,
+    input  logic [ADDRESS_WIDTH-1:0] wr_addr,
+    input  logic [ADDRESS_WIDTH-1:0] rd_addr,
+    input  logic [DATA_WIDTH-1:0]    din,
+    output logic [DATA_WIDTH-1:0]    dout
 );
 
-logic [DATA_WIDTH-1:0] rom_array [2**ADDRESS_WIDTH-1:0];
-
-initial begin
-    $display("Loading ROM");
-    $readmemh("sinerom.mem", rom_array);
-end;
+logic [DATA_WIDTH-1:0] ram_array [2**ADDRESS_WIDTH-1:0];
 
 always_ff @(posedge clk) begin
-    doutA <= rom_array[addrA];
-    doutB <= rom_array[addrB];
+    if (wr_en == 1'b1)
+        ram_array[wr_addr] <= din;
+
+    if (rd_en == 1'b1)
+        // output is synchronous
+        dout <= ram_array[rd_addr];
 end
+
 endmodule
 ```
 
-### Editing the top file
+As you can see, the `ram_array` has not changed. The logic in the `always_ff` just writes at the write address if `wr_en` is high, and reads at the read address if `rd_en` is high.
 
-The counter does not need to change. Instead the top `sinegen` file now needs to use the step as the phase between the two addresses. Therefore when one address is `count` the other is `count + step`. This will create the phase.
+### Connecting with new top
+
+The top module now needs all these new input and outputs and will use an offset to always read a bit behind where we are writing to.
 
 ```SV
-module sinegen #(
-    parameter A_WIDTH = 8,
-              D_WIDTH = 8
+module sigdelay #(
+    parameter ADDRESS_WIDTH = 9,
+              DATA_WIDTH    = 8
 )(
-    input  logic             clk,    
-    input  logic             rst,    
-    input  logic             en, 
-    input  logic [D_WIDTH-1:0] step, 
-    output logic [D_WIDTH-1:0] doutA,
-    output logic [D_WIDTH-1:0] doutB 
+    input  logic                     clk,
+    input  logic                     rst,
+    input  logic                     wr,
+    input  logic                     rd,
+    input  logic [DATA_WIDTH-1:0]    mic_signal,     // input audio sample
+    input  logic [ADDRESS_WIDTH-1:0] offset,         // delay offset
+    output logic [DATA_WIDTH-1:0]    delayed_signal  // delayed output
 );
 
-logic [A_WIDTH-1:0] address;     // interconnect wire as can't go straight between modules
+    // Internal wires
+    logic [ADDRESS_WIDTH-1:0] address;
+    logic [DATA_WIDTH-1:0]    ram_out;
 
-counter addrCounter (
-    .clk   (clk),
-    .rst   (rst),
-    .en    (en),
-    .count (address)
-);
+    counter #(ADDRESS_WIDTH) addrCounter (
+        .clk   (clk),
+        .rst   (rst),
+        .en    (1'b1),
+        .count (address)
+    );
 
-rom2ports #(8, 8) sineRom (
-    .clk  (clk),
-    .addrA (address),
-    .addrB (address + step),
-    .doutA (doutA),
-    .doutB (doutB)
-);
+    ram2ports #(
+        .ADDRESS_WIDTH(ADDRESS_WIDTH),
+        .DATA_WIDTH(DATA_WIDTH)
+    ) delayRAM (
+        .clk     (clk),
+        .wr_en   (wr),
+        .rd_en   (rd),
+        .wr_addr (address),
+        .rd_addr (address - offset),  // delayed read address
+        .din     (mic_signal),
+        .dout    (ram_out)
+    );
+
+    // Connect delayed output
+    assign delayed_signal = ram_out;
 
 endmodule
 ```
 
-### Changing the test bench
+### Testbench
 
-Similarly this now just needs to plot on `vbdPlot()` for both outputs:
+The testbench was provided for us but it uses the following functions to initialise the on board microphone and to return the mic signals:
 
-```SV
-vbdPlot(int(sinegen->doutA), 0, 255);
-vbdPlot(int(sinegen->doutB), 0, 255);
+```cpp
+// intialize variables for analogue output
+  vbdInitMicIn(RAM_SZ);
+  
+  // ask Vbuddy to return the next audio sample
+  top->mic_signal = vbdMicValue();
 ```

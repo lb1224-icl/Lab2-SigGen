@@ -15,7 +15,6 @@ module sigdelay #(
     logic [ADDRESS_WIDTH-1:0] address;
     logic [DATA_WIDTH-1:0]    ram_out;
 
-    // Address counter — cycles through RAM locations
     counter #(ADDRESS_WIDTH) addrCounter (
         .clk   (clk),
         .rst   (rst),
@@ -23,7 +22,6 @@ module sigdelay #(
         .count (address)
     );
 
-    // Dual-port RAM for delay effect
     ram2ports #(
         .ADDRESS_WIDTH(ADDRESS_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)

@@ -88,7 +88,7 @@ Vsinegen* sinegen = new Vsinegen;
 
 The tracer:
 
-```SV
+```cpp
 Verilated::traceEverOn(true);
 VerilatedVcdC* tfp = new VerilatedVcdC;
 sinegen->trace(tfp, 99);
@@ -96,13 +96,13 @@ tfp->open("sinegen.vcd");
 ```
 
 And start the vbuddy:
-```SV
+```cpp
 if(vbdOpen()!=1) return(-1);
 ```
 
 We then loop over the clock as usual and update the `vbdPlot()` with `sinegen->dout` mapping it between 0 and 255:
 
-```SV
+```cpp
 for (i = 0; i < 10000000; i++) {
     sinegen->step = vbdValue();
 

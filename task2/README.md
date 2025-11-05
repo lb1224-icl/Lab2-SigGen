@@ -79,7 +79,7 @@ endmodule
 
 Similarly this now just needs to plot on `vbdPlot()` for both outputs:
 
-```SV
+```cpp
 vbdPlot(int(sinegen->doutA), 0, 255);
 vbdPlot(int(sinegen->doutB), 0, 255);
 ```
