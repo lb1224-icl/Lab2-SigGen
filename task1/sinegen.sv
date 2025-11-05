@@ -5,7 +5,7 @@ module sinegen #(
     input  logic             clk,    
     input  logic             rst,    
     input  logic             en, 
-    input  logic [D_WIDTH-1:0] step, 
+    input  logic [A_WIDTH-1:0] step, 
     output logic [D_WIDTH-1:0] dout  
 );
 
@@ -19,7 +19,7 @@ counter addrCounter (
     .count (address)
 );
 
-rom #(8, 8) sineRom (
+rom #(A_WIDTH, D_WIDTH) sineRom (
     .clk  (clk),
     .addr (address),
     .dout (dout)
